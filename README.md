@@ -6,7 +6,7 @@ Currently, Usenix Security is only the one supported.
 How to run:
 ```
 ./pmc --help
-Usage: asfp (-c|--conference ARG) (-y|--year ARG) (-l|--cycle ARG)
+Usage: pmc (-c|--conference ARG) (-y|--year ARG) (-l|--cycle ARG)
             (-o|--output ARG) [-m|--maxsize ARG]
 
   PMC (Paper With Code)
