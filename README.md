@@ -1,15 +1,15 @@
-# PMC (Paper With Code)
+# PWC (Paper With Code)
 
 This tool extracts the paper's implementation repository links.
 Currently, Usenix Security is only the one supported.
 
 How to run:
 ```
-./pmc --help
-Usage: pmc (-c|--conference ARG) (-y|--year ARG) (-l|--cycle ARG)
+./pwc --help
+Usage: pwc (-c|--conference ARG) (-y|--year ARG) (-l|--cycle ARG)
             (-o|--output ARG) [-m|--maxsize ARG]
 
-  PMC (Paper With Code)
+  PWC (Paper With Code)
 
 Available options:
   -c,--conference ARG      target conference name (usenix | ccs | ndss | s&p)
@@ -21,7 +21,7 @@ Available options:
 ```
 
 ```
-./pmc -c usenix -y 2022 -l winter -o usenix-sec22-winter
+./pwc -c usenix -y 2022 -l winter -o usenix-sec22-winter
 ```
 
 The output would be placed in `usenix-sec22-winter/result.txt`

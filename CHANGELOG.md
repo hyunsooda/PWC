@@ -1,4 +1,4 @@
-# Revision history for pmc
+# Revision history for pwc
 
 ## 0.1.0.0 -- YYYY-mm-dd
 

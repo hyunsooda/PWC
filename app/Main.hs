@@ -129,7 +129,7 @@ main = do
         hClose out
 
       opts = info (mkParams <**> helper)
-                  (fullDesc <> progDesc "PMC (Paper With Code)")
+                  (fullDesc <> progDesc "PWC (Paper With Code)")
 
 mkParams :: Opt.Parser Params
 mkParams =
