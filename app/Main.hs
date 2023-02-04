@@ -52,7 +52,7 @@ parseHyperlink filePath = do
           log <- liftIO $ printQueryResult title githubLinks
           tell [log]
         else do
-          err <- liftIO $ gitLabUnsupported
+          err <- liftIO gitLabUnsupported
           tell [err]
   where
     filterLink prefix t = mkUniq $ filter (isPrefixOf prefix) t
@@ -61,7 +61,7 @@ parseHyperlink filePath = do
       links <- filterM (isTargetRepo title) repoLinks
       if length links == 1
         then pure $ Just $ head links
-        else pure $ Nothing
+        else pure Nothing
 
     printQueryResult title githubLinks = do
       link <- findRepo title githubLinks
@@ -69,7 +69,7 @@ parseHyperlink filePath = do
         Just link' -> do
           let titleWithLink = title ++ " --> " ++ link'
           setSGR [SetColor Foreground Vivid Green]
-          print $ titleWithLink
+          print titleWithLink
           setSGR [Reset]
           pure titleWithLink
         Nothing -> do
@@ -89,7 +89,7 @@ isTargetRepo :: String -> String -> IO Bool
 isTargetRepo title repoLink = do
   resp <- try (get repoLink) :: IO (Either SomeException (Response C.ByteString))
   case resp of
-    Left err -> (printErr $ HttpGetError title repoLink) >> pure False
+    Left err -> printErr (HttpGetError title repoLink) >> pure False
     Right r' ->
       let content = C.unpack (r' ^. responseBody)
        in pure $ isInfixOf title content
