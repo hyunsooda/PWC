@@ -1,7 +1,6 @@
 # PWC (Paper With Code)
 
-This tool extracts the paper's implementation repository links.
-Currently, Usenix Security is only the one supported.
+This tool extracts links to the implementation repositories of papers. Currently, only Usenix Security is supported.
 
 How to run:
 ```
@@ -24,14 +23,14 @@ Available options:
 ./pwc -c usenix -y 2022 -l winter -o usenix-sec22-winter
 ```
 
-The output would be placed in `usenix-sec22-winter/result.txt`
+The output will be placed in `usenix-sec22-winter/result.txt`
 ```
 Piranha: A GPU Platform for Secure Computation --> https://github.com/ucbrise/piranha
 Half-Double: Hammering From the Next Row Over --> https://github.com/iaik/halfdouble
 ...
 ```
 
-The extractor method is highly heuristic; thus, it may not be able to extract for some papers
+The extractor method is highly heuristic, so it may not be able to extract implementation repository links for some papers.
 
 # Build
 ```
