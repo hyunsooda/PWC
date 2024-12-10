@@ -1,6 +1,6 @@
 # PWC (Paper With Code)
 
-This tool extracts links to the implementation repositories of papers. Currently, only Usenix Security is supported.
+This tool extracts links to the implementation repositories of papers using LLM. Currently, only Usenix Security is supported.
 
 How to run:
 ```
@@ -36,3 +36,7 @@ The extractor method is highly heuristic, so it may not be able to extract imple
 ```
 cabal build
 ```
+
+## CPU implementation(prev) and GPU implementation(current)
+Initially(commit:`3e613d4`), PWC was implemented using a multi-core CPU, with a highly heuristic extractor method.
+The implementation has since been updated to utilize a single GPU, and the extractor now leverages an [LLM](https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct) to extract PoC code provided by the paper authors.

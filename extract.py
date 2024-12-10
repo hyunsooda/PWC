@@ -1,13 +1,13 @@
 import os
 import shutil
 import bs4
-import pdfplumber
 import re
 import requests
 import argparse
+import torch.multiprocessing as mp
+from PyPDF2 import PdfReader
+from model.llm import ask, init_model, repo_system_prompt
 from io import BytesIO
-from pathlib import Path
-from multiprocessing import Process, connection
 
 N_CHUNKS = 1
 ALLOWED_MAX_SIZE = 20000000
@@ -20,9 +20,9 @@ def mkdir_overwrite(dir):
         shutil.rmtree(dir)
     os.makedirs(dir)
 
-def write_file(dir, filename, hyperlinks):
+def write_file(dir, filename, repolinks):
     with open(os.path.join(dir, filename.replace('/', '_')), "w") as file:
-        file.write("\n".join(hyperlinks))
+        file.write(repolinks)
 
 def isMatch(str, prefix):
     for p in prefix:
@@ -46,32 +46,26 @@ def extractURLs(refs, prefix):
                 urls.append('https://' + m)
     return urls
 
-def read_pdf(url, title, pdf_max_size):
+def read_pdf(model, tokenizer, url, title):
     data = requests.get(url)
-    pdf = pdfplumber.open(BytesIO(data.content))
-    if len(data.content) > pdf_max_size:
-        print('the requested pdf size is too long to deal with ({0}: {1})'.format(title, len(data.content)))
-        return []
+    data.raise_for_status()
+    reader = PdfReader(BytesIO(data.content))
+    paper_text = ""
 
-    repos = set([])
-    prefix = [GITHUB, GITLAB]
-    for page in pdf.pages:
-        page.extract_text()
-        left = page.crop((0, 0, 0.5 * page.width, page.height))
-        right = page.crop((0.5 * page.width, 0, page.width, page.height))
-        repos.update(extractURLs(left.extract_text().replace('\n', ''), prefix))
-        repos.update(extractURLs(right.extract_text().replace('\n', ''), prefix))
-        repos.update(extractURLs(left.extract_text(), prefix))
-        repos.update(extractURLs(right.extract_text(), prefix))
-    return list(repos)
+    for page in reader.pages:
+        paper_text += page.extract_text() + "\n"
+
+    repolinks = ask(model, tokenizer, repo_system_prompt, paper_text, 64)
+    return repolinks
 
 def fetch_usenix_sec_pdf(pdf_prefix, pt_link):
     resp = requests.get(pt_link)
     links = bs4.BeautifulSoup(resp.text, 'html.parser').select('a')
     for link in links:
         href = link.get('href')
-        if href != None and 'system/files/' + pdf_prefix in href:
-            return href
+        for prefix in pdf_prefix:
+            if href != None and 'system/files/' + prefix in href:
+                return href
 
 def iterate_usenix_sec_papers(pdf_prefix, url):
     resp = requests.get(url)
@@ -93,32 +87,25 @@ def chunks(lst, n):
     for i in range(0, len(lst), n):
         yield lst[i:i + n]
 
-def work(dir, workset, pdf_max_size):
+def work(idx, dir, model, tokenizer, workset):
     for title, url in workset:
-        hyperlinks = read_pdf(url, title, pdf_max_size)
-        write_file(dir, title, hyperlinks)
-        print(title, len(hyperlinks))
+        repolinks = read_pdf(model, tokenizer, url, title)
+        write_file(dir, title, repolinks)
+        print("processing {0}th ... {1}".format(idx, title))
 
-def run(url, pdf_prefix, dir, pdf_max_size):
+def run(model, tokenizer, url, pdf_prefix, dir):
     mkdir_overwrite(dir)
     metadata = iterate_usenix_sec_papers(pdf_prefix, url)
     print("total " + str(len(metadata)) + " papers found")
 
-    workers = []
     for idx, workset in enumerate(chunks(metadata, N_CHUNKS)):
-        worker = Process(target=work, args=(dir, workset, pdf_max_size))
-        workers.append(worker)
-        worker.start()
-
-    if len(workers) > 0:
-        connection.wait(w.sentinel for w in workers)
+        work(idx, dir, model, tokenizer, workset)
 
 def parse_input(args):
     conference = args.conference.lower()
     year = args.year.lower()
     cycle = args.cycle.lower()
     output = args.output
-    pdf_max_size = args.pdfsize
 
     if int(year) < 2020:
         print('The year must be larger than 2020. The other years are not aware yet ({0})'.format(year))
@@ -130,8 +117,8 @@ def parse_input(args):
 
     if conference == 'usenix':
         target_url = 'https://www.usenix.org/conference/usenixsecurity{0}/{1}-accepted-papers'.format(year[2:len(year)], cycle)
-        pdf_prefix = 'sec{0}-'.format(year[2:len(year)])
-        return target_url, pdf_prefix, output, pdf_max_size
+        pdf_prefix = ['sec{0}-'.format(year[2:len(year)]), 'usenixsecurity{0}-'.format(year[2:len(year)])]
+        return target_url, pdf_prefix, output
     else:
         print('A conference (journal) {0} is not supported yet'.format(conference))
         quit()
@@ -144,7 +131,10 @@ def main():
     parser.add_argument("-o", "--output", dest="output", required=True)
     parser.add_argument("-m", "--maxsize", dest="pdfsize", default=ALLOWED_MAX_SIZE)
     args = parser.parse_args()
-    url, pdf_prefix, dir, pdf_max_size = parse_input(args)
-    run(url, pdf_prefix, dir, pdf_max_size)
+    url, pdf_prefix, dir = parse_input(args)
+    model, tokenizer = init_model("Qwen/Qwen2.5-1.5B-Instruct")
+    run(model, tokenizer, url, pdf_prefix, dir)
 
-main()
+if __name__ == "__main__":
+    mp.set_start_method('spawn')
+    main()
